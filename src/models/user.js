@@ -16,8 +16,8 @@ const userSchema = new mongoose.Schema({
         required: true,
         trim: true,
         lowercase: true,
-        validate(value){
-            if(!validator.isEmail(value)){
+        validate(value) {
+            if (!validator.isEmail(value)) {
                 throw new Error("Email is invalid");
             }
         }
@@ -27,8 +27,8 @@ const userSchema = new mongoose.Schema({
         required: true,
         minlength: 7,
         trim: true,
-        validate(value){
-            if(value.toLowerCase().includes("password")){
+        validate(value) {
+            if (value.toLowerCase().includes("password")) {
                 throw new Error("Password can not contain 'Password'")
             }
         }
@@ -36,8 +36,8 @@ const userSchema = new mongoose.Schema({
     age: {
         type: Number,
         default: 0,
-        validate(value){
-            if(value<0){
+        validate(value) {
+            if (value < 0) {
                 throw new Error("Age must be a positive number")
             }
         }
@@ -47,7 +47,12 @@ const userSchema = new mongoose.Schema({
             type: String,
             required: true
         }
-    }]
+    }],
+    avatar: {
+        type: Buffer
+    }
+}, {
+    timestamps: true
 })
 
 userSchema.virtual('tasks', {
@@ -56,7 +61,7 @@ userSchema.virtual('tasks', {
     foreignField: 'owner'
 })
 
-userSchema.methods.toJSON = function() {
+userSchema.methods.toJSON = function () {
     const user = this;
     const userObject = user.toObject();
 
@@ -66,11 +71,11 @@ userSchema.methods.toJSON = function() {
     return userObject;
 }
 
-userSchema.methods.generateAuthToken = async function() {
+userSchema.methods.generateAuthToken = async function () {
     const user = this;
-    const token = jwt.sign({ _id: user._id.toString() }, 'mysecret');
+    const token = jwt.sign({ _id: user._id.toString() }, 'mysecret', { expiresIn: '5h' });
 
-    user.tokens = user.tokens.concat({ token});
+    user.tokens = user.tokens.concat({ token });
     try {
         await user.save();
     } catch (error) {
@@ -81,13 +86,13 @@ userSchema.methods.generateAuthToken = async function() {
 
 userSchema.statics.findByCredentails = async (email, password) => {
     const user = await User.findOne({ email });
-    if(!user){
+    if (!user) {
         throw new Error('Unable to login');
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
-    if(!isMatch){
+    if (!isMatch) {
         throw new Error('Unable to login');
     }
 
@@ -95,16 +100,16 @@ userSchema.statics.findByCredentails = async (email, password) => {
 }
 
 //hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
     const user = this;
-    if(user.isModified('password')){
+    if (user.isModified('password')) {
         user.password = await bcrypt.hash(user.password, 8);
     }
     next();
 })
 
 //Delete user tasks when user is deleted
-userSchema.pre('deleteOne', async function(next){
+userSchema.pre('deleteOne', async function (next) {
     const user = this;
     await Task.deleteMany({ owner: user._id });
     next();
